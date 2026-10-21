@@ -1,0 +1,49 @@
+﻿ticket_id,category,route,reason,priority,risk_flags,allowed_tools,ai_draft,next_step
+TK-1001,order,auto,模型判路徑：詢問訂單是否成立，需查詢訂單狀態,normal,,get_order,true,agent_review_then_send
+TK-1002,refund_cancel,auto,模型判路徑：取消已成立訂單並詢問退費計算方式；急件：客人因家人生病需取消行程，屬急件（模型）,urgent,,get_order;search_policy,true,agent_review_then_send
+TK-1003,policy,auto,模型判路徑：詢問產品是否包含機場稅、燃油附加費與導遊小費,normal,,search_policy,true,agent_review_then_send
+TK-1004,complaint,human,模型判路徑：客人抱怨客服電話無法接通；急件：客人等待40分鐘未接通客服電話，屬當下服務問題（模型）,urgent,,,false,agent_handles
+TK-1005,order,auto,模型判路徑：需查詢訂單內容以確認是否可加購嬰兒票,normal,,get_order,true,agent_review_then_send
+TK-1006,product,human,模型判路徑：詢問企業包團服務與報價,normal,,,false,agent_handles
+TK-1007,order,auto,模型判路徑：客人要求修改已成立訂單的出發日期,normal,,get_order,true,agent_review_then_send
+TK-1008,spam,auto,模型判路徑：發送限時體驗金活動訊息,normal,,,false,archive
+TK-1009,policy,auto,模型判路徑：詢問郵輪艙房樓層選擇政策,normal,,search_policy,true,agent_review_then_send
+TK-1010,other_department,human,模型判路徑：發票統編錯誤需重新開立；急件：發票統編錯誤導致公司報帳退件，需立即處理（模型）,urgent,,,false,forward_to_department
+TK-1011,complaint,human,模型判路徑：客人對導遊服務與行程安排不滿，要求道歉與退款；急件：客人表示將在社團公開經驗，可能影響公司聲譽（模型）；急件：出發日 2026-06-23 距建單 0 天（程式計算）；急件：公開或法律威脅（規則：社團公開）；高風險：客人要求賠償並揚言公開經驗，屬高風險客訴（模型）；高風險：公開或法律威脅（規則：社團公開）；擋下：get_order 不在 high_risk 的上限內；擋下：search_policy 不在 high_risk 的上限內,urgent,high_risk,,false,senior_agent_handles
+TK-1012,non_chinese,human,規則判路徑：非中文（中文字元占比 0% < 50%）；擋下：get_order 不在 non_chinese 的上限內,normal,,,false,agent_handles
+TK-1013,refund_cancel,auto,模型判路徑：客人反映收到兩筆不同金額的扣款通知，疑似重複扣款；急件：客人威脅要向銀行爭議款，需立即處理（模型）；急件：揚言止付／爭議款（規則：爭議款）,urgent,,get_order,true,agent_review_then_send
+TK-1014,policy,auto,模型判路徑：詢問行程是否因天氣取消及退款方式,normal,,search_policy,true,agent_review_then_send
+TK-1015,refund_cancel,auto,"模型判路徑：申請退款並附診斷證明；需主管簽核（提示）：客人主張 186,000 元 > 30,000，正式判斷在查訂單後",normal,supervisor_approval,get_order;search_policy,true,agent_review_then_supervisor
+TK-1016,other_department,human,模型判路徑：會員帳號被鎖，無法登入且無法接收驗證碼,normal,,,false,forward_to_department
+TK-1017,product,human,模型判路徑：確認報價單並簽回,normal,,,false,agent_handles
+TK-1018,external_info,human,模型判路徑：詢問出入境規定，屬外部資訊,normal,,,false,agent_handles
+TK-1019,complaint,human,模型判路徑：客人反映飯店房間與網頁照片不符，且未處理；急件：客人威脅將向消保官申訴並聯絡媒體（模型）；急件：公開或法律威脅（規則：消保官、爆料、找消保官和媒體）；高風險：客人揚言將公開並走法律途徑（模型）；高風險：公開或法律威脅（規則：消保官、爆料、找消保官和媒體）；擋下：get_order 不在 high_risk 的上限內,urgent,high_risk,,false,senior_agent_handles
+TK-1020,order,auto,模型判路徑：詢問行程表寄出時間,normal,,get_order,true,agent_review_then_send
+TK-1021,order,auto,模型判路徑：詢問颱風是否影響行程及退費方式；急件：旅客明日出發，需立即確認行程安排（模型）；急件：出發日 2026-06-25 距建單 1 天（程式計算）,urgent,,get_order;search_policy,true,agent_review_then_send
+TK-1022,policy,auto,模型判路徑：詢問團體餐與機上餐是否可安排素食,normal,,search_policy,true,agent_review_then_send
+TK-1023,refund_cancel,auto,模型判路徑：要求退款並提供銀行帳戶資訊；含個資：身分證字號、手機號碼、銀行帳號格式,normal,pii,get_order,true,agent_review_then_send
+TK-1024,other_department,human,模型判路徑：未提及訂單或退款，僅反映電話無法接通,normal,,,false,forward_to_department
+TK-1025,product,human,模型判路徑：詢問產品價格與計算方式；擋下：search_policy 不在 product 的上限內,normal,,,false,agent_handles
+TK-1026,other_department,human,模型判路徑：應徵職缺，非旅客相關事項,normal,,,false,forward_to_department
+TK-1027,policy,auto,模型判路徑：詢問旺來金折抵規則及餘額是否會過期,normal,,search_policy,true,agent_review_then_send
+TK-1028,order,auto,模型判路徑：詢問機票英文名是否正確及影響；急件：出發日期為7/8，需確認是否影響登機（模型）,urgent,,get_order,true,agent_review_then_send
+TK-1029,complaint,human,"模型判路徑：客人因領隊遲到導致錯過班機，要求賠償；急件：客人已錯過班機，造成實際損失且需當下處理（模型）；高風險：客人要求全額賠償且提供收據，可能涉及法律途徑（模型）；高風險：要求賠償（規則：賠償）；需主管簽核（提示）：客人主張 45,000 元 > 30,000，正式判斷在查訂單後；擋下：get_order 不在 high_risk 的上限內；擋下：search_policy 不在 high_risk 的上限內",urgent,high_risk;supervisor_approval,,false,senior_agent_handles
+TK-1030,product,human,模型判路徑：詢問產品價格差異；擋下：search_policy 不在 product 的上限內,normal,,,false,agent_handles
+TK-1031,refund_cancel,auto,模型判路徑：客人反映重複扣款未處理；急件：客人威脅要請銀行止付，需當下處理（模型）；急件：揚言止付／爭議款（規則：止付）,urgent,,get_order,true,agent_review_then_send
+TK-1032,product,human,模型判路徑：詢問適合輪椅旅客的日本溫泉行程與設施；擋下：search_policy 不在 product 的上限內,normal,,,false,agent_handles
+TK-1033,insufficient_info,auto,模型判路徑：僅詢問是否可退，未提及訂單編號或明確需求,normal,,,true,agent_review_then_send
+TK-1034,other_department,human,模型判路徑：洽談合作提案，非訂單相關,normal,,,false,forward_to_department
+TK-1035,policy,auto,模型判路徑：詢問出發通知與登機資訊的寄出時間,normal,,search_policy,true,agent_review_then_send
+TK-1036,product,human,模型判路徑：詢問 JR PASS 兌換方式與所需文件,normal,,,false,agent_handles
+TK-1037,complaint,human,模型判路徑：客人反映住宿環境有蟑螂，要求處理；急件：客人因住宿問題不敢繼續入住，需立即處理（模型）；急件：出發日 2026-06-26 距建單 0 天（程式計算）；擋下：get_order 不在 complaint 的上限內；擋下：search_policy 不在 complaint 的上限內,urgent,,,false,agent_handles
+TK-1038,refund_cancel,auto,模型判路徑：詢問退款進度與入帳時間,normal,,get_order,true,agent_review_then_send
+TK-1039,other_department,human,模型判路徑：要求修改發票開立方式,normal,,,false,forward_to_department
+TK-1040,external_info,human,模型判路徑：詢問入境簽證規定，非訂單相關,normal,,,false,agent_handles
+TK-1041,test,auto,模型判路徑：測試資料,normal,,,false,archive
+TK-1042,order,auto,模型判路徑：需查詢訂單狀態與電子票券發送情況；急件：客人明日需使用門票，未收到QR code將影響進場（模型）；急件：出發日 2026-06-27 距建單 1 天（程式計算）,urgent,,get_order,true,agent_review_then_send
+TK-1043,refund_cancel,auto,模型判路徑：詢問退費計算與團體人數變動影響,normal,,get_order;search_policy,true,agent_review_then_send
+TK-1044,refund_cancel,auto,模型判路徑：客人聲稱客服誤導致多付款，要求退款,normal,,get_order;search_policy,true,agent_review_then_send
+TK-1045,product,human,模型判路徑：詢問加購行李公斤數的費用與是否能於出發前三天購買,normal,,,false,agent_handles
+TK-1046,other_department,human,模型判路徑：詢問發票開立事宜，非訂單相關,normal,,,false,forward_to_department
+TK-1047,other_department,human,模型判路徑：非旅客來信，屬媒體採訪請求,normal,,,false,forward_to_department
+TK-1048,policy,auto,模型判路徑：詢問退改規則與手續費比例,normal,,search_policy,true,agent_review_then_send

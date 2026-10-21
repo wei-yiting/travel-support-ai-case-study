@@ -1,0 +1,39 @@
+%%{init: {"flowchart": {"wrappingWidth": 340}}}%%
+flowchart TD
+  IN["run_triage.py: load 48 tickets<br/>(xlsx / csv, 6 columns)"] --> RU & LM
+
+  subgraph RU["rules.py: rules (no model needed)"]
+    R1["Non-Chinese: share of Chinese characters"]
+    R2["Explicit wording: PR or legal threats, compensation, chargeback"]
+    R3["Structured PII: national ID, phone, bank account, card number"]
+  end
+
+  subgraph LM["llm.py: local model qwen3:8b"]
+    L1["category: handling path (1 of 10)"]
+    L2["urgent, high_risk (with reasons)"]
+    L3["departure_date, claimed_amount"]
+    L4["needed_tools: get_order / search_policy"]
+  end
+
+  RU --> MG
+  LM --> MG
+  MG["triage.py merge<br/>• Handling path: rules decide non-Chinese, model decides the rest<br/>• Urgent = model ∪ chargeback / PR-threat wording ∪ departure ≤ 3 days<br/>• High risk = model ∪ PR-threat / compensation wording<br/>• Supervisor approval = claimed amount > 30,000 (hint)<br/>• PII = PII patterns"]
+
+  MG --> RT{"triage.py _route: checked in order"}
+  RT -- "Spam, test data" --> O1["Archive"]
+  RT -- "High risk" --> O2["human | senior agent or supervisor handles"]
+  RT -- "Auto paths: order, refund, policy, insufficient info" --> O3["auto | AI drafts<br/>allowed tools = needed_tools ∩ path ceiling<br/>requests above the ceiling are blocked and noted in reason"]
+  RT -- "Other paths: complaint, other department, product, external info, non-Chinese" --> O4["human | agent handles or forwards"]
+
+  O1 & O2 & O3 & O4 --> OUT["Output triage_result.csv<br/>category | route | reason | priority | risk_flags | allowed_tools | ai_draft | next_step<br/>+ summary.md"]
+
+  classDef rule fill:#fff4e5,stroke:#e8a33d,color:#5a3b00;
+  classDef ai fill:#f0ecff,stroke:#8b6fd6,color:#222;
+  classDef prog fill:#eef6ff,stroke:#5b8def,color:#123;
+  classDef sys fill:#f2f2f2,stroke:#999,color:#333;
+  class R1,R2,R3 rule;
+  class L1,L2,L3,L4 ai;
+  class MG,RT,O1,O2,O3,O4 prog;
+  class IN,OUT sys;
+  style RU fill:#ffffff,stroke:#e8a33d,stroke-dasharray: 4 3
+  style LM fill:#ffffff,stroke:#8b6fd6,stroke-dasharray: 4 3

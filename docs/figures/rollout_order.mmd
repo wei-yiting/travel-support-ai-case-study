@@ -1,0 +1,24 @@
+%%{init: {"flowchart": {"wrappingWidth": 340}}}%%
+flowchart TD
+  D["1. Discovery<br/>Observe agents · label samples · set baseline"] --> C["2. Define categories<br/>Handling paths derived from discovery · approved by the support lead, who assigns an owner"]
+
+  subgraph S["3. Roll out triage in stages (advisory only · agents give thumbs up/down)"]
+    S1["3a. First: priority and risk flags<br/>urgent · escalation · non-support · spam · insufficient info · non-Chinese · other department · link open tickets from the same customer"]
+    S2["3b. Then: add handling paths one by one"]
+    S1 --> S2
+  end
+
+  C --> S1
+  S2 -. "Review uncategorized tickets regularly" .-> C
+  S2 --> R["4. Per handling path: enable lookups first, then drafting<br/>Lookup results shown to agents → accuracy meets target → enable drafting<br/>Each step: small rollout → agent ratings → expand when on target"]
+
+  D -.-> L{{"Model and external-service review<br/>Use an on-prem model until approved"}}
+  L -.-> S1
+  D -.-> K["Parallel track<br/>Request system access · if worthwhile, curate policy knowledge and assign an owner"]
+  K --> G{{"System access or knowledge for this path is ready"}}
+  G --> R
+
+  classDef gate fill:#fff4e5,stroke:#e8a33d,color:#5a3b00;
+  classDef track fill:#eef6ff,stroke:#5b8def,color:#123;
+  class L,G gate;
+  class K track;
