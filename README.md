@@ -1,8 +1,8 @@
-# Travel Customer Support AI — Case Study
+# Travel Customer Support AI — Deployment Case Study
 
-A deployment analysis and triage PoC for bringing AI into the customer-support workflow of a mid-size travel e-commerce company, under data-privacy, system-access, and staffing constraints.
+An end-to-end analysis of bringing AI-drafted replies into the customer-support operation of a mid-size travel e-commerce company — scoping, solution design, metrics, and launch gates under data-privacy, system-access, and staffing constraints — plus a runnable PoC of the first rollout stage, ticket triage.
 
-> **Simulated scenario.** The company, stakeholders, and 48 sample tickets are fictional; the tickets were provided with the original exercise.
+> **Simulated scenario** from a senior field-deployment engineering assignment. The company, stakeholders, and 48 sample tickets are fictional.
 
 ## The situation
 
@@ -30,9 +30,9 @@ A deployment analysis and triage PoC for bringing AI into the customer-support w
 
 Orange is code, purple is AI, blue is human, grey is a system event.
 
-## The PoC
+## The PoC: ticket triage, the first rollout stage
 
-A runnable triage pipeline over the 48 sample tickets, combining a local `qwen3:8b` model (via Ollama) with deterministic rules.
+Triage ships first because it does not depend on order-API access or curated policy knowledge, and it gets urgent and cross-department tickets handled sooner. The PoC is a runnable triage pipeline over the 48 sample tickets, combining a local `qwen3:8b` model (via Ollama) with deterministic rules.
 
 - **2** tickets archived (spam, test data); **46** enter the support queue
 - Of those, **23 (50%)** go to `auto` (AI looks up data and drafts, agent reviews) and **23** to `human`

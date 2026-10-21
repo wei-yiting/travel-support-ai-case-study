@@ -1,6 +1,6 @@
-# Case Study: AI-Assisted Customer Support for a Travel E-Commerce Company
+# Bringing AI-Drafted Replies into Travel Customer Support: Deployment Analysis
 
-> **Simulated scenario.** The company, stakeholders, and 48 sample tickets are fictional. This document is the full deployment analysis; the runnable triage PoC is in [`poc/`](../poc/).
+> **Simulated scenario** from a senior field-deployment engineering assignment. The company, stakeholders, and 48 sample tickets are fictional. This document is the full deployment analysis; the runnable PoC of the first rollout stage, ticket triage, is in [`poc/`](../poc/).
 
 ## TL;DR
 
@@ -306,9 +306,9 @@ Rollback means turning off the failing feature and handing it back to humans.
 - **Personal-data incident:** the only case that pauses everything; all work goes back to humans.
 - **Human takeover rate rising for 2 consecutive weeks:** step back one stage and investigate.
 
-## 6. Triage PoC
+## 6. PoC: Ticket Triage
 
-The PoC implements the triage half of the workflow on the 48 sample tickets, using a local `qwen3:8b` model via Ollama plus deterministic rules. Run instructions, data issues, design trade-offs, known limitations, and the top three steps toward production are in [`poc/README.md`](../poc/README.md); results for all 48 tickets are in [`poc/output/triage_result.csv`](../poc/output/triage_result.csv).
+The PoC covers triage because it is the first rollout stage and the only one that does not depend on order-API access or curated policy knowledge. It implements the triage half of the workflow on the 48 sample tickets, using a local `qwen3:8b` model via Ollama plus deterministic rules. Run instructions, data issues, design trade-offs, known limitations, and the top three steps toward production are in [`poc/README.md`](../poc/README.md); results for all 48 tickets are in [`poc/output/triage_result.csv`](../poc/output/triage_result.csv).
 
 ## 7. Pilot Stress Test
 

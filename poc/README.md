@@ -1,6 +1,6 @@
 # Ticket Triage PoC
 
-Implements the triage half of the [case-study workflow](../docs/case-study.md#41-end-to-end-workflow) on 48 sample tickets: decide each ticket's handling path, urgency, and risk, then set its route, the lookup tools AI may use, whether AI drafts, and the next step. **`route = auto` does not mean sending automatically: AI may look up data and draft, but an agent reviews before anything is sent.**
+Implements ticket triage — the first stage of the [rollout](../docs/case-study.md#27-rollout-order) and the front half of the [end-to-end workflow](../docs/case-study.md#41-end-to-end-workflow) — on 48 sample tickets: decide each ticket's handling path, urgency, and risk, then set its route, the lookup tools AI may use, whether AI drafts, and the next step. **`route = auto` does not mean sending automatically: AI may look up data and draft, but an agent reviews before anything is sent.**
 
 The tickets are in Traditional Chinese, so the model prompt and the agent-facing `reason` column are in Chinese as well; structured columns use English codes.
 
@@ -13,8 +13,8 @@ ollama pull qwen3:8b    # about 5.2 GB
 ```
 
 ```bash
-git clone https://github.com/wei-yiting/support-ticket-triage-case-study.git
-cd support-ticket-triage-case-study/poc
+git clone https://github.com/wei-yiting/travel-support-ai-case-study.git
+cd travel-support-ai-case-study/poc
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -105,7 +105,7 @@ Judgments that need language understanding go to the model; fixed formats and bu
 
 **Out of scope**
 
-- No draft generation: the task covers triage only, and drafting needs curated policy knowledge first
+- No draft generation: drafting is a later rollout stage that needs order-API access and curated policy knowledge
 - Lookup tools are declared but not implemented: no API access
 - No linking of open tickets and no re-triage after details arrive: no ticketing system
 - No sending email and no writes to any system
