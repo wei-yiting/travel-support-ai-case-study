@@ -1,0 +1,27 @@
+%%{init: {"flowchart": {"wrappingWidth": 260}}}%%
+flowchart TD
+  A["New ticket"] --> P
+
+  subgraph P["Implemented in the PoC"]
+    R["Rule checks (code)<br/>risk keywords · PII · thresholds"] --> T["AI triage<br/>handling path · priority · risk"]
+    T --> RT{"Route (code)"}
+  end
+
+  RT -- "High risk" --> HR["Senior agent or supervisor<br/>handles end to end"]
+  RT -- "Human-only paths" --> HU["Agent handles<br/>or forwards"]
+  RT -- "AI-assisted paths" --> L["Read-only lookups<br/>tools capped per path by code"]
+  L --> D["AI drafts reply"]
+  D --> K["Agent reviews and edits"]
+  K --> J{"Refund > NT$30,000?"}
+  J -- Yes --> S["Supervisor approval"] --> SEND
+  J -- No --> SEND["Agent performs any write action<br/>and sends the reply"]
+
+  classDef rule fill:#fff4e5,stroke:#e8a33d,color:#5a3b00;
+  classDef ai fill:#f0ecff,stroke:#8b6fd6,color:#222;
+  classDef human fill:#eef6ff,stroke:#5b8def,color:#123;
+  classDef sys fill:#f2f2f2,stroke:#999,color:#333;
+  class R,RT,J rule;
+  class T,L,D ai;
+  class HR,HU,K,S,SEND human;
+  class A sys;
+  style P fill:#ffffff,stroke:#333,stroke-dasharray: 5 4,color:#222

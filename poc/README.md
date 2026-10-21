@@ -136,7 +136,7 @@ Judgments that need language understanding go to the model; fixed formats and bu
 ## Top three steps toward production
 
 1. **Build an evaluation set from discovery and validate the model + prompt combination.**
-   Senior agents label real historical tickets. Proceed only after meeting the PoC promotion criteria in the case study (triage error ≤ 10%; zero missed urgent tickets, spam misclassifications, and wrong-department forwards).
+   Senior agents label real historical tickets. Proceed only after meeting the PoC promotion criteria in the case study (handling-path error ≤ 10%; zero missed urgent tickets, spam misclassifications, and wrong-department forwards).
 
 2. **Decide how to deploy the model and observability.**
    Observability can be self-hosted inside the company (e.g. Langfuse, Arize Phoenix) so full traces stay internal, but maintenance cost and whether retention and audit features need a paid tier must be assessed. An external service requires legal and security review and should receive only content-free data. The model likewise is chosen between on-prem deployment and a reviewed external service. Can run in parallel with step 1.
