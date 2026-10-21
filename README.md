@@ -1,4 +1,4 @@
-# Travel Customer Support AI — Deployment Case Study
+# Travel Agency Customer Support AI — Deployment Case Study
 
 An end-to-end analysis of bringing AI-drafted replies into the customer-support operation of a mid-size travel e-commerce company — scoping, solution design, metrics, and launch gates under data-privacy, system-access, and staffing constraints — plus a runnable PoC of the first rollout stage, ticket triage.
 
