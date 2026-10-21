@@ -2,7 +2,7 @@
 
 A deployment analysis and triage PoC for bringing AI into the customer-support workflow of a mid-size travel e-commerce company, under data-privacy, system-access, and staffing constraints.
 
-> **Simulated scenario.** The company, stakeholders, and 48 sample tickets are fictional; the tickets were provided with the original exercise. The analysis and code are my own work, done with AI assistance as described in the [case study](docs/case-study.md#how-i-worked-with-ai).
+> **Simulated scenario.** The company, stakeholders, and 48 sample tickets are fictional; the tickets were provided with the original exercise.
 
 ## The situation
 

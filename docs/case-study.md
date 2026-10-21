@@ -349,8 +349,3 @@ The urgent targets (1 hour normal, 2 hours peak) and the 4-hour regular target l
 - **Triage accuracy ≥ 90%:** intent classification over 289 classes for Chinese e-commerce after-sales support reached 93% (JDDC, LREC 2020, non-LLM). Anthropic's ticket-routing guide targets 90–95% (vendor documentation without a cited measurement). This scenario has far fewer categories, but published zero-shot LLM classification on real tickets ranges from about 34% to 76%, so labeled examples from discovery are needed as few-shot examples or training data, validated on this scenario's own labeled set.
 - **Lookup and citation accuracy ≥ 95%:** grounded answer generation in customer support shows about a 5% error rate (LinkedIn support study, arXiv 2026, LLM-graded); this design also refuses to draft without a policy basis. Legal RAG tools have measured error rates of 17–33%, so the risk should not be underestimated.
 - The Wizard of Oz test mixes in errors at these rates (about 10% misrouted, 5% wrong citations) to verify agents can still finish within the target handling time.
-
-## How I worked with AI
-
-- **Analysis:** for each section, I first wrote my own judgment. AI then played stakeholders and an interviewer to challenge it, and I responded point by point. Next, AI acted as a mentor and pointed out what to revise in my original judgment and responses; I decided what to adopt. After all discussions, AI wrote up the final conclusions. AI also searched public research for the quality targets, and I checked the sources before using them.
-- **PoC:** based on the design above, an AI agent wrote the code and an explanatory report; I reviewed both and iterated with the agent.
