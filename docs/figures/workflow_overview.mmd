@@ -9,7 +9,7 @@ flowchart TD
 
   RT -- "High risk" --> HR["Senior agent or supervisor<br/>handles end to end"]
   RT -- "Human-only paths" --> HU["Agent handles<br/>or forwards"]
-  RT -- "AI-assisted paths" --> L["Read-only lookups<br/>tools capped per path by code"]
+  RT -- "AI-assisted paths" --> L["Read-only lookups<br/>tools capped per path, identity and order ownership checked by code"]
   L --> D["AI drafts reply"]
   D --> K["Agent reviews and edits"]
   K --> J{"Refund > NT$30,000?"}

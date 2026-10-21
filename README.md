@@ -20,7 +20,7 @@ An end-to-end analysis of bringing AI-drafted replies into the customer-support 
 |---|---|
 | LLM classification, field extraction, rule merge, and routing | Implemented in the PoC |
 | Per-path ceiling on the tools the model requests | Implemented as a filter; the tools themselves are stubs |
-| Order API, policy retrieval, drafting, and the agent interface | Designed only |
+| Identity and order-ownership checks, order API, knowledge retrieval, drafting, and the agent interface | Designed only |
 | Discovery with agents, a labeled evaluation set, and a pilot | Not yet run |
 
 ## Key decisions
@@ -29,11 +29,12 @@ An end-to-end analysis of bringing AI-drafted replies into the customer-support 
 |---|---|
 | **AI triage + drafts with agent review**, not fully automatic replies | Large refunds need supervisor approval, and legal or PR threats need human judgment; a wrong reply costs more than the time saved |
 | **Triage by what happens next**: handling path, priority, risk flags | Topic categories do not tell an agent which systems to check or how urgent a ticket is |
-| **Code owns business rules; AI owns understanding** | Refund thresholds, departure deadlines, and risk keywords must be deterministic. AI can escalate rule flags but never clear them |
-| **Least-privilege tools** | AI requests lookups and code approves them against a per-path ceiling; AI never writes to the order system, which limits the blast radius of a prompt injection by design |
+| **Code owns business rules; AI owns understanding** | Refund thresholds, departure deadlines, risk keywords, and tool and data permissions must be deterministic. AI can escalate rule flags but never clear them |
+| **Least-privilege tools** | AI requests lookups and code approves them against a per-path ceiling after verifying member identity and order ownership; AI never writes to the order system, which limits the blast radius of a prompt injection by design |
 | **Local open-source model until legal approves a vendor** | Keeps customer data in-house while the vendor review runs in parallel |
-| **Staged rollout with rollback by step** | Advisory triage → lookups → drafting, path by path; errors turn off only the failing step |
-| **No headcount reduction promised** | Across optimistic and conservative assumptions, capacity stays well below peak-season volume |
+| **Human-verified launch gates** | Supervisors or senior agents audit whether first replies were correct, useful, and on time (≥ 95% to reach production); error rates count only explicit errors agents report, not style suggestions |
+| **Staged rollout with rollback by step** | Advisory triage → lookups → drafting, path by path; a failure turns off only the affected feature or path, which must re-earn its gates |
+| **No headcount reduction promised** | Even with an optimistic 30% saving on draftable tickets, capacity reaches about 500 tickets a day against about 700 in peak season |
 
 ## Workflow overview
 

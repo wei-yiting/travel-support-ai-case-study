@@ -4,13 +4,12 @@
 
 ## TL;DR
 
-- **Recommendation:** start with AI triage plus drafted replies that agents review before sending, not fully automatic replies. Treat a standalone knowledge-base Q&A tool as optional, depending on discovery.
-- **Triage by what happens next, not by topic:** handling path (which systems and who), priority, and risk flags.
-- **Code owns business rules, AI owns understanding:** refund approval thresholds, urgency deadlines, and risk keywords are deterministic; the model can escalate them but never clear them.
-- **Least-privilege tools:** the model requests lookups; code approves them against a per-path ceiling. The AI never writes to the order system.
+- **Recommendation:** AI triages, looks up data, and drafts replies; agents review before anything is sent. Fully automatic replies are not recommended now, and a standalone knowledge-base tool is built only if discovery shows it is worth it.
+- **Triage by what happens next, not by topic:** handling path (which data and who handles it), priority, and risk flags.
+- **Code owns business rules, AI owns understanding:** refund-approval thresholds, departure deadlines, risk keywords, and tool and data permissions are deterministic. The model can escalate rule flags but never clear them, and it never writes to business systems.
 - **Data stays in-house** until legal and security approve an external provider, so the PoC runs on a local open-source model.
-- **Staged rollout with explicit gates:** advisory triage → lookups → drafting, path by path, with rollback triggers tied to the stage where an error occurs.
-- **Capacity check:** across optimistic and conservative assumptions, AI assistance raises daily capacity from about 360 to roughly 390–480 tickets, well short of about 700 in peak season. There is no basis to promise a headcount reduction.
+- **Human-verified gates:** supervisors or senior agents audit whether first replies were correct, useful, and on time; error rates count only explicit errors reported by agents. Triage → lookups → drafting open path by path, and a failure turns off only the affected feature.
+- **Capacity check:** with an optimistic 30% time saving on draftable tickets, daily capacity rises to about 500 tickets, enough for about 350 a day in normal season but about 200 short of peak volume. There is no basis to promise a headcount reduction.
 
 **What was built vs. designed**
 
@@ -18,7 +17,7 @@
 |---|---|
 | LLM classification, field extraction, rule merge, and routing | Implemented in the PoC |
 | Per-path ceiling on the tools the model requests | Implemented as a filter; the tools themselves are stubs |
-| Order API, policy retrieval, drafting, and the agent interface | Designed only |
+| Identity and order-ownership checks, order API, knowledge retrieval, drafting, and the agent interface | Designed only |
 | Discovery with agents, a labeled evaluation set, and a pilot | Not yet run |
 
 Sections 2–5 are the design; section 6 reports what the PoC showed; section 7 is a hypothetical pilot scenario.
@@ -46,225 +45,231 @@ The support lead proposed three options:
 
 A ticket-by-ticket review of the 48 samples did not match the interview picture:
 
-- Order tickets were clearly below 40%. Complaints, administrative requests (invoices, member accounts), and non-support email made up a large share, so the category definitions need to be revisited with the support lead.
 - About 15% were not support tickets at all: job applications, sponsorship pitches, vendor quotes, press requests, and spam.
 - About one in six was urgent, for example a typhoon the day before departure, a duplicate charge with a chargeback threat, or threats to go to the consumer protection office or the media.
-- One customer included a national ID and bank account number in the email (TK-1023). Another complained that nobody answered the phone but actually wanted the itinerary (TK-1004).
+- Some tickets contained personal data (TK-1023 includes a national ID and bank account number), and some stated a request that differed from the real need (TK-1004 complains that nobody answered the phone but actually wants the itinerary).
 
 ### 2.2 Triage dimensions
 
-Topic categories do not answer "what happens next for this ticket", so triage uses three dimensions:
+Topic categories alone do not answer "what happens next for this ticket", so triage uses three dimensions:
 
-| Dimension | Definition | Examples |
-|---|---|---|
-| **Handling path** | Which systems must be checked and who handles it | Needs an order lookup, needs policy knowledge, belongs to another department, non-Chinese (routed to an agent fluent in that language); actual paths come from discovery |
-| **Priority** | How urgent | Departing within 72 hours, currently traveling |
-| **Risk flags** | Whether to escalate | Amount above NT$30,000, mentions the consumer protection office or the media, contains personal data |
+- **Handling path:** which data is needed and who handles it.
+- **Priority:** for example, departing within 72 hours or currently traveling.
+- **Risk flags:** for example, an amount above NT$30,000, legal or PR exposure, or personal data.
 
-There are also two kinds of knowledge. **Policy knowledge** (change and cancellation rules, standard-contract refund tiers, natural-disaster handling) is relatively stable and can have a named owner. **Product information** (itineraries, prices, inclusions) changes often and should be read from the product system or website directly.
+The actual paths come from **discovery**: observe how agents answer tickets, and have senior agents label each ticket type's handling steps, required data, systems checked, applicable policies, and responsible role, with historical timestamps as the baseline. The results define the categories, the tools and access ceiling for each path, and which step is most worth improving.
 
-### 2.3 What is still unknown
+### 2.3 Evaluating the three options
 
-The interviews did not say which systems agents actually check, how long lookups take, or whether knowledge comes from documents or from asking senior colleagues. The first step is therefore **discovery**: observe agents at work, have senior agents label how sample tickets are handled, and build a baseline from ticketing-system timestamps.
-
-### 2.4 Evaluating the three options
-
-**Shared prerequisites.** All three options run a model over tickets or knowledge, and tickets contain personal data. Whichever is chosen:
-
-- **Model and external-service review:** legal and security choose and contract the deployment model (external API, cloud-hosted, or on-prem), plus any logging or monitoring service that touches ticket data.
-- **Data-handling rules:** external contractors sign an NDA; unmasked tickets stay inside the company environment and enter no external service before that review is complete.
+**Shared conditions.** External contractors sign an NDA, and unmasked tickets stay inside the company environment. The model and any external service that touches ticket data must pass legal and security review and be contracted before it receives data.
 
 **(A) Fully automatic replies — not recommended now.**
 
-- Some tickets must be decided by people: refunds above NT$30,000 need supervisor approval, and compensation demands or threats involving regulators or the media carry legal and PR implications.
-- A wrong reply costs compensation and reputation, far more than the time saved, and correctness cannot be claimed before measuring it.
-- *Prerequisite:* data from (B) shows specific categories are accurate enough; open them one at a time after review.
+- *Fit:* large refunds, compensation, and legal or PR cases still need human judgment, so full automation does not fit.
+- *Risk:* situations vary and nothing has been measured yet; a wrong reply can cost compensation and reputation.
+- *Prerequisite:* accumulate data from (B), then evaluate category by category, with human review, what could be answered automatically.
 
 **(B) AI triage and drafts, agents review — recommended.**
 
-- Senior agents say many tickets need two or three systems, and the sample needs are diverse. AI can triage on the three dimensions, extract order numbers and amounts, look up data in advance, draft replies from policy knowledge (RAG), and leave the final check to agents.
-- *Risks:* personal data reaching an unreviewed service; misread intent sending drafts in the wrong direction; order-API access review delaying the timeline.
-- *Prerequisites:* read access to the order API; discovery of the actual handling process.
-- *Design boundary:* AI only reads. Write actions such as refund requests are pre-filled by AI and submitted by agents.
+- *Fit:* agents often check two or three systems per ticket. AI can extract information, look up data in advance, and draft from policy, while agents keep the final check.
+- *Risk:* misreading the need sends lookups and drafts in the wrong direction; the order-API access review can delay the timeline.
+- *Prerequisites:* discovery clarifies the process and categories, and read access to the required APIs is granted. AI only looks up, suggests, and drafts; agents perform all write actions.
 
-**(C) Knowledge-base Q&A — depends on discovery.**
+**(C) Internal knowledge-base Q&A — depends on discovery.**
 
-- Worth building only if looking up knowledge takes a large share of agent time and maintenance is affordable. If so, integrate policy knowledge into (B) for drafting instead of building a separate tool.
-- *Risks:* scattered, conflicting documents would make answers cite outdated content; without an owner, accuracy decays over time.
-- *Prerequisites:* scope limited to policy knowledge; versions cleaned up and an owner assigned by the support lead; product information read from source systems rather than copied.
+- *Fit:* suited to internal knowledge that changes little and has a confirmable valid version, such as policies and standard operating procedures. If finding this knowledge really costs agents time and curating it is worth the cost, integrate it into (B) rather than building a separate tool.
+- *Risk:* conflicting document versions lead to wrong citations; without an owner, accuracy decays.
+- *Prerequisites:* confirm the valid versions, clean out outdated or conflicting content, and assign an owner and an update process.
 
-### 2.5 What not to solve with AI
+### 2.4 What not to solve with AI
 
-- **Knowledge version governance:** which rule is in force is a business decision for the owner. AI only helps convert documents into a searchable format.
-- **Approval for refunds above NT$30,000:** a clear business rule. Code checks the threshold and routes to a supervisor; AI does not decide whether approval is needed.
-- **Long phone wait times:** TK-1004 and TK-1024 both complain that nobody answers the phone. This is a phone-staffing and systems issue to report to management separately.
-- **Visas, passport validity, weather:** set by external authorities and change quickly. Replies cite the official government or airline notice and agents confirm the latest rule.
+- **Policy version governance:** the business owner confirms which version is valid; AI only helps convert it into a searchable format.
+- **Approval for refunds above NT$30,000:** code checks the threshold and routes to a supervisor; AI does not decide whether approval is needed.
+- **Long phone wait times:** a phone-staffing and systems issue to report to management separately.
+- **Visas, passport validity, and weather rules:** based on official government and airline sources and confirmed by agents; AI does not decide them.
+- **Business outside customer support:** job applications, sponsorships, vendor quotes, and press requests are routed to the owning department; the support AI does not judge or answer for that department.
 
-### 2.6 What not to solve yet
+### 2.5 What not to solve yet
 
-- **Fully automatic replies:** require measured data from (B) to know which categories are safe.
-- **Halving headcount:** not a goal at this stage. Until quality is stable, every reply needs agent review, so savings come gradually, starting with shorter handling time.
+- **Fully automatic replies:** evaluate category by category once (B) has enough quality and risk data.
+- **Halving headcount:** not promised now. Every reply still needs human review; first verify the improvement in handling time and first response. See the capacity limit in §3.5.
+- **Curating fast-changing internal knowledge:** product details, itineraries, prices, and inclusions are not turned into another knowledge base that must be kept in sync. Agents keep using the current sources; connecting directly to source systems can be evaluated later.
 
-### 2.7 Rollout order
+### 2.6 Rollout order
 
 ![Rollout order](figures/rollout_order.png)
 
 Orange marks external prerequisites; blue marks the parallel track.
 
-1. **Discovery:** confirm the process and baseline, and clarify API access, QPS, and the timeline for the model and external-service review. Also assess whether integrating policy knowledge is worth it (curation and maintenance cost vs. agent lookup time). Administrative processes often move slower than development, so raise them early.
-2. **Define categories:** derive handling paths from discovery. I propose; the support lead approves and assigns an owner.
-3. **Roll out triage in stages:** results are advisory and do not change the existing process. Agents give thumbs up or down, and that feedback becomes labeled evaluation data. Start with priority, risk flags, non-support, spam, insufficient info, non-Chinese, and other-department routing, and link open tickets from the same customer. These do not depend on the handling-path definitions and get urgent and cross-department tickets handled first. Then add handling paths one at a time; collect uncategorized tickets for regular review.
-4. **Per handling path, enable lookups before drafting:** open a path only when its system access or knowledge is ready (for example, order paths wait for API access). First show agents the looked-up order and policy data; enable drafting only after lookup accuracy meets the target. Validating lookups and drafting separately makes it possible to locate errors. Each step starts small, is rated by agents, and expands when on target.
+1. **Discovery.** Clarify the process, data needs, and time spent, and set the baseline. In parallel, confirm API access, QPS, and the model-review timeline, and decide whether policy knowledge is worth integrating, to avoid building in the wrong direction.
+2. **Define categories.** Derive handling paths from discovery. I propose; the support lead approves and assigns an owner, so categories match the real work.
+3. **Roll out triage in stages.** Start with priority, risk, and detection of non-support, spam, insufficient-info, non-Chinese, and other-department tickets, and link open tickets from the same customer; this does not wait for every handling path to be defined. Then add handling paths one at a time. Results are advisory at first, agents mark them right or wrong, and uncategorized tickets are reviewed regularly.
+4. **Per path, enable lookups before drafting.** Once a path's access and knowledge are ready, first show agents the lookup results with sources to verify; enable drafting only after lookup accuracy meets the target. Validating the two stages separately makes errors locatable. Each starts small and expands only after ratings meet the target.
 
-System-access requests start in parallel with discovery. If policy knowledge is worth integrating, it is curated in parallel with a named owner. Until the model and external-service review is done, development uses an on-prem open-source model so data never leaves the company; I provide a cost, latency, and quality comparison of deployment options for legal and security to decide.
+**Parallel work:** access requests start with discovery; if policy knowledge is worth integrating, it is curated in parallel with a named maintainer. Until the model and external-service review is done, development uses an open-source model deployed inside the company; I provide a cost, latency, and quality comparison of deployment options for legal and security to decide.
 
-### 2.8 Response to the support lead's request
+### 2.7 Response to the support lead's request
 
 The support lead wants automatic replies and half the headcount. The recommendation is to use (B) first to shorten first response time and reduce complaints and negative reviews, keeping those two requests as long-term goals pursued category by category once quality is stable.
 
 ## 3. Problem Definition
 
+**Problem statement:** use AI triage, advance lookups, and drafting to cut the time agents spend searching across systems and writing replies, shorten first response, and reduce complaints and negative reviews caused by slow replies. Human review stays in place, and no headcount reduction is promised now.
+
 ### 3.1 Goals and non-goals
 
-| Level | Goal |
-|---|---|
-| **Outcome** | Shorter first response time (measured separately for normal season, peak season, and urgent tickets); fewer complaints and negative reviews caused by slow replies |
-| **Intermediate** | Shorter handling time per ticket: agents no longer search across systems, and spend less time writing replies |
+**Goals**
 
-**Non-goals** — things each stakeholder might assume are included but are not:
+- **Outcome:** shorter first response time, measured separately for normal season, peak season, and urgent tickets; fewer complaints and negative reviews caused by slow replies.
+- **Means:** less lookup and writing time per ticket.
 
-| Stakeholder | Non-goals |
-|---|---|
-| Support | Fully automatic replies; halving headcount; improving phone support; complaints not caused by slow replies (e.g. tour quality); AI performing write actions; drafting non-Chinese replies; automatic product-information retrieval |
-| IT | No changes to the order or ticketing systems, integration only through existing APIs; no request to raise API QPS; no curation of all knowledge documents |
-| Legal and security | No training or fine-tuning on customer data |
+**Non-goals**
 
-- **Non-Chinese tickets** are triaged and get looked-up information, but no draft. Chinese drafting comes first, and non-Chinese tickets may be better handled by agents fluent in that language.
-- **Product questions** are triaged only and handled manually. There is no product-data API; scraping product pages with source links is a possible later addition.
-- **Later extensions:** a separate prompt for non-Chinese lookups and drafting; visa and weather questions answered only from designated official sources with links. Both wait for pilot data on actual volume.
+- **Business outcomes:** fully automatic replies, halving headcount, improving phone support, and complaints not caused by slow replies.
+- **Feature scope:** AI performing business writes, drafting non-Chinese replies, automatic product-information retrieval, and curating all internal knowledge. Fast-changing product knowledge does not get its own knowledge base for now.
+- **System changes:** integrate through existing APIs; no changes to the order or ticketing systems and no request to raise API QPS.
+- **Data use:** no training or fine-tuning on customer data.
+
+Product and external-info questions are triaged and handled by agents; non-Chinese tickets can show looked-up data but get no draft. Later extensions depend on pilot data.
 
 ### 3.2 Users and scenarios
 
 **Primary users: front-line agents.**
 
-- Opening a ticket, they see the triage result, looked-up data with sources, suggested actions, and a draft reply.
-- They confirm the data and perform any needed action (for example, an order change).
-- They review and edit the draft, then send it.
-- Their work shifts from "look it up and write it" to "check and correct", and similar tickets can be batched.
-
-**Also affected:** customers (speed and correctness of replies), other departments receiving forwarded tickets (routing accuracy), the support lead (results, risks, failure cases), legal and security (data use and vendor review), IT (system access), and the knowledge owner (ongoing maintenance, if policy knowledge is integrated).
+1. **Open a ticket:** see the rule and AI triage results, the data AI looked up with sources, suggested actions, and a draft reply on draftable paths.
+2. **Confirm and act:** check the triage and data, and perform any required business action; refunds above NT$30,000 first need supervisor approval.
+3. **Reply:** edit and confirm the draft, then send. Tickets without a draft are handled manually; tickets that need another department are answered after that department responds.
 
 ### 3.3 Inputs and outputs
 
-**Inputs:** ticket content and attachments (whether AI should read photos is to be confirmed with support); order data via the order API; policy knowledge (if integrated); open tickets from the same customer (linked to avoid duplicate or conflicting replies).
+**Inputs**
 
-**Normal outputs:** triage on three dimensions; lookup results with source links; suggested actions; a draft reply (not for non-Chinese tickets).
+- Ticket body and attachments; whether AI should read photos is to be confirmed with agents.
+- Order data obtained with authorization.
+- Confirmed-valid internal knowledge such as policies and SOPs, if discovery decides to integrate it.
+- Open tickets from the same customer, shown to agents to avoid duplicate or conflicting replies.
 
-**Exception outputs:**
+**Normal outputs**
 
-- Order not found → tell the agent and use a template asking the customer to confirm order details
-- No policy basis found → no draft
-- Fits no category → human handling
-- Model unavailable → flag the error and retry once; if it still fails, notify the maintainer and route to humans, keeping urgent tickets flagged by rules first in line
+- Handling path, priority, and risk flags.
+- Looked-up data with source links.
+- Suggested actions.
+- A draft reply on draftable paths.
+
+**Exception outputs**
+
+- Order not found → alert the agent, who uses a template to ask the customer to confirm order details.
+- No relevant internal-knowledge basis → no draft; human handling.
+- Fits no category → human handling; collected for regular category review.
+- Model unavailable → retry once; if it still fails, notify the maintainer and route to humans, keeping urgent and high-risk flags set by rules, urgent first.
 
 ### 3.4 Prerequisites
 
 **Blocking — do not start without:**
 
-- Support lead agrees to agent observation and senior-agent time for labeling samples
-- External contractors sign an NDA; unmasked tickets used only inside the company environment
-- Local hardware that can run an open-source model, for development before the model and external-service review is complete
+- The support lead agrees to agent observation and assigns senior agents to label handling steps.
+- External contractors sign an NDA, and unmasked tickets can be used inside the company environment.
+- Enough local hardware to run an open-source model for development before the model and external-service review is complete.
 
 **Parallel — start now, but they gate later stages:**
 
-- Order-API access request; paths that need order lookups open only after approval
-- Model and external-service (logging, monitoring) review; until complete, no pilot with real data, and development uses the local model
+- Paths that need order lookups open only after order-API read access is approved.
+- The model and other services complete the required review; external services receive no ticket data before they are contracted. Until then there is no pilot on real data, and development uses the in-house model.
+- Paths that need internal knowledge open only after valid versions are confirmed, the content is curated, and a maintainer is in place.
 
 ### 3.5 Acceptance criteria
 
-**Assumptions** (to be confirmed with historical ticket timestamps and discovery):
+**Working assumptions, all to be verified in discovery and the pilot**
 
-- All 8 agents work weekdays and spend about 6 hours a day on tickets; response time is measured in working hours after the start of the shift
-- About two thirds of tickets arrive outside working hours and are waiting at the start of the day
-- Current handling time is conservatively 8 minutes per ticket
-- **Optimistic planning case:** AI assistance saves about 30% of handling time (the best case in public studies, about 5.6 minutes per ticket) on about 83% of tickets, treating only product, external-info, and non-Chinese tickets (about 17% of the sample) as unassisted at 8 minutes. This is an upper bound: the design also keeps complaints, other-department, and high-risk tickets out of drafting, and the PoC marked only half of the support tickets as AI-assisted. The [appendix](#appendix-how-the-targets-were-derived) shows how capacity changes across both assumptions.
-- About one in six tickets is urgent (sample ratio)
+- 8 agents work weekdays and spend about 6 hours a day on tickets.
+- A full support ticket takes about 8 minutes today. Based on a travel company's reported results with AI-assisted email replies, draftable tickets are assumed to take 30% less time, about 5.6 minutes, as an optimistic estimate.
+- Tickets handled fully by hand stay at 8 minutes; forwarding to another department takes about 3 minutes of agent time (hand-off and the later reply, excluding the wait for the other department).
+- Once stable, spam and test data take no per-ticket time; checking them by hand at first is a pilot cost, replaced later by spot checks.
+- The case mix comes from the 48 samples; about two thirds of tickets arrive outside working hours and about one in six is urgent, both to be confirmed with historical data.
 
-These handling times will be validated during discovery with a **Wizard of Oz** test: people prepare the outputs the system would produce, mix in erroneous outputs at typical industry error rates, and time agents as they review and correct them.
+A **Wizard of Oz** test validates these handling times: people prepare the data and drafts the system would provide, mix in errors, and time agents as they check and correct them. Sources and calculations are in the [appendix](#appendix-how-the-targets-were-derived).
 
-Targets under the optimistic planning case with current staffing. Outcome targets are re-set once discovery measures the real AI-assisted share and the Wizard of Oz handling times:
+**Provisional targets**
 
 | Type | Metric | Target | Data source |
 |---|---|---|---|
-| Outcome | First response, urgent | Normal season: within 1 working hour; peak: within 2 working hours | Ticket timestamps |
-| Outcome | First response, regular | Normal season: within 4 working hours of shift start | Ticket timestamps |
-| Outcome | Tickets per agent per hour | About +30% (about 7.5 → 10) | Ticketing-system handling records |
-| Quality | Handling-path accuracy | ≥ 90% | Agent thumbs up/down |
-| Quality | Lookup and policy-citation accuracy | ≥ 95% | Agent feedback |
-| Guardrail | Missed urgent tickets | 0 | Agent reports while handling regular tickets; supervisor spot checks of the non-urgent queue |
-| Guardrail | Incorrect content sent | 0 | Supervisor spot checks; customer replies |
-| Guardrail | Personal-data incidents | 0 | Security audit |
+| Outcome | First response, urgent | Within 1 working hour (normal) or 2 (peak) | Ticket timestamps |
+| Outcome | First response, regular | Within 4 working hours (normal) | Ticket timestamps |
+| Efficiency | Average handling time on draftable tickets | About 30% below baseline | Discovery timing, ticket handling records |
+| Quality | Handling-path triage accuracy | ≥ 90% | Agent triage corrections |
+| Quality | Lookup and internal-knowledge citation accuracy | ≥ 95% | Agent feedback |
+| Guardrail | Missed urgent tickets, incorrect content sent, personal-data incidents | 0 each | Agent reports, supervisor spot checks, security audit |
 
-**Known limits (not acceptance targets):**
+Working hours count from receipt; tickets received outside working hours count from the start of the next shift, and the clock pauses outside working hours.
 
-- Peak season brings about 700 tickets a day, above the improved capacity of roughly 390–480 depending on assumptions, so regular tickets still back up and cannot all be answered the same day.
-- Even in the optimistic case, normal season needs about 6 agents' worth of working time and peak season about 12, so there is no basis to promise a headcount reduction.
-- Whether to add staff or widen automation for peak season is a management decision based on pilot data.
+**Capacity limit:** under these assumptions, the team can absorb about 500 tickets a day, covering about 350 in normal season; at about 700 in peak season, roughly 200 tickets a day still back up, so same-day replies for regular tickets cannot be promised.
 
 ### 3.6 Five questions to ask before starting
 
-Each answer determines whether work can start or whether a baseline can be established:
-
-| # | Question | Ask | Risk it rules out |
-|---|---|---|---|
-| 1 | Can we observe agents and get senior-agent time for labeling? After an NDA, can we develop and test on unmasked tickets inside the company environment? | Support lead, legal | Discovery cannot happen; masking data slows development |
-| 2 | How long will review and contracting take for the model and any external service that touches ticket data (logging, monitoring)? | Legal, security | The pilot timeline cannot be estimated |
-| 3 | How long is the order-API access review? | IT | Paths needing order lookups stay blocked |
-| 4 | Can we export historical tickets with timestamps from the ticketing system? | IT | No baseline to prove improvement or confirm peak-season length |
-| 5 | Is there local hardware that can run an open-source model? | IT | No development possible before the deployment review is complete |
+| Question | Ask | Risk it rules out |
+|---|---|---|
+| Can we observe agents, arrange labeling, and use unmasked tickets inside the company environment after an NDA? | Support lead, legal | Discovery cannot be done, or no usable data |
+| How long will review and contracting take for the model and any external service that touches ticket data? | Legal, security | The pilot timeline cannot be estimated |
+| How long is the order-API access review? | IT | Order-lookup paths stay blocked |
+| Can we export historical tickets with timestamps? | IT | No baseline to prove improvement or confirm peak-season length |
+| Is there enough local hardware to run an open-source model? | IT | No development possible before the external-service review is done |
 
 ## 4. Solution Design
 
 ### 4.1 End-to-end workflow
 
-Boxes are actions and diamonds are decisions. Orange is code, purple is AI, blue is human, and grey is a system event. Dashed lines are lookup-failure paths.
-
 ![End-to-end workflow](figures/workflow.png)
 
-A ticket enters through the ticketing-system webhook, passes rule checks, and is triaged by AI. Based on the ticket, AI requests lookup tools — `get_order` (order system) and `search_policy` (policy knowledge), possibly both — and code approves them within the ceiling set for the handling path. AI summarizes the findings, suggests actions, and drafts a reply, which goes back to the ticketing system for agent review. Refunds above NT$30,000 require supervisor approval first. Agents perform any needed actions (modify or cancel an order, submit a refund request) in the order system, then send the reply. Tickets handled manually because of a model failure, a lookup failure, or non-Chinese content follow the same back half of the flow. High-risk tickets are handled end to end by a senior agent or supervisor; product, external-info, and non-support tickets involve no refunds and close after handling.
+A ticket arrives through the webhook, passes rule checks and AI triage, then gets lookups, suggestions, and a draft according to its handling path before returning to the ticketing system for agent review.
+
+- **Lookups:** AI requests the tools it needs, and code approves them within the path's ceiling. Until discovery confirms the systems, orders are looked up through `get_order`, and internal knowledge is retrieved with sources through `search_policy`.
+- **Reply and actions:** agents confirm the triage, data, and draft, perform any required business action, and send the reply; urgent tickets go first.
+- **Approval:** refunds above NT$30,000 need supervisor approval before the agent acts and replies.
+- **Forwarding:** the owning department handles the question and the agent replies with its answer. High-risk tickets are handled end to end by a senior agent or supervisor.
 
 ### 4.2 Division of responsibilities
 
 | Role | Responsible for |
 |---|---|
-| Rules (code) | Linking open tickets from the same customer; non-Chinese detection (share of Chinese characters); personal-data patterns (national ID, phone, bank account, card number); urgent and high-risk keywords; whether the AI-extracted departure date is within 72 hours; whether a refund exceeds NT$30,000. AI can escalate rule flags but never clear them |
-| AI | Three-dimensional triage, extracting information from the ticket, requesting lookup tools and performing read-only lookups, summarizing results, suggesting actions, drafting replies |
-| RAG / knowledge base | Policy knowledge with sources; no draft when no basis is found |
-| Humans | Confirming triage, data, and drafts; performing all write actions in the order system; handling high-risk and non-drafted tickets; supervisor approval for large refunds |
+| Rules (code) | Linking open tickets from the same customer; checking non-Chinese text, personal-data patterns, and urgent and high-risk keywords; checking whether the AI-extracted departure date is within 72 hours and whether a refund exceeds NT$30,000; enforcing tool and data permissions |
+| AI | Three-dimensional triage, information extraction, requesting lookup tools and performing read-only lookups within what is approved, summarizing findings and suggested actions, drafting replies. It cannot clear flags escalated by rules |
+| RAG / knowledge base | Confirmed-valid internal knowledge with sources; no draft when no relevant basis is found |
+| Humans | Confirming triage, data, and drafts; performing all business writes; handling non-drafted tickets; supervisor approval for large refunds |
 
-### 4.3 Human-handoff triggers
+### 4.3 Human handoff and exceptions
 
-- **Model service failure:** keep urgent and high-risk flags set by rules and route everything to humans, urgent first
-- **Order not found:** tell the agent and use a template to ask the customer to confirm order details; no AI draft
-- **No policy basis found:** human handling; no AI draft
-- **High risk** (compensation demands, PR or legal mentions): no AI handling or drafting; a senior agent or supervisor handles it end to end
-- **Paths without drafting:** product, external info, non-Chinese, other department, complaints and compensation
-- **Insufficient info:** first fill gaps from linked open tickets and orders under the sender's account, then re-triage; only if that fails does AI draft a request for missing details
-- **Spam:** no human handling; moved to a spam folder with no reply, spot-checked to catch misclassification
-- **Refund above NT$30,000:** AI drafts as usual, but after agent review a supervisor must approve before the refund is executed and the reply is sent
+- **High risk (compensation, PR, legal)** → after triage, a senior agent or supervisor handles it end to end; AI does no further lookups or drafting.
+- **Product, external info, non-Chinese, other department, complaints and compensation** → no draft, handled by people; non-Chinese tickets can show looked-up data.
+- **Identity or order access cannot be verified** → no order data is shown; agents follow the existing verification process.
+- **Order not found** → no draft; the agent uses a template to ask the customer to confirm order details.
+- **No relevant internal-knowledge basis** → no draft; human handling.
+- **Insufficient info** → first fill gaps from linked tickets and authorized order data; if that works, re-triage. Only if details from the customer are still missing does AI draft a request for them.
+- **Unclassifiable** → human handling; collected for regular review.
+- **Refund above NT$30,000** → can be drafted, but needs supervisor approval after agent review.
+- **Spam and test data** → archived with no reply; checked one by one at first, spot-checked once stable.
 
 ### 4.4 Error handling and degradation
 
-- **Service failure:** when the model is unavailable, rule checks keep running, so urgent flags are never interrupted.
-- **Quality degradation:** agents can thumbs-down triage, lookups, or drafts during review. If thumbs-downs within an hour exceed a threshold and are clearly above the usual rate, degrade from the failing step onward and hand that step and everything after it to humans. Healthy steps keep running; for example, if order lookups fail, triage and urgent flagging continue.
+Agents can give two kinds of feedback on triage, lookups, or drafts:
+
+| Feedback | Handling and record |
+|---|---|
+| **Could be better** | No clear error, but tone, length, or presentation could improve. The suggestion is logged and is not used to trigger quality degradation |
+| **Error — needs manual fix** | The agent found a clear error and verifies, corrects, or rewrites it by hand. The failing step, cause, and correction are logged |
+
+System failures and quality degradation are handled separately:
+
+- **Model service failure** → retry once; if it still fails, notify the maintainer and route to humans, logging the failure and outcome. Rule checks keep running, preserving urgent and high-risk flags.
+- **Quality degradation** → based on system-failure logs and "error — needs manual fix" reports. If explicit error reports within an hour exceed a threshold and run clearly above the usual rate, degrade from the failing step onward and hand the rest to humans.
+- **Healthy features keep running** → for example, if order lookups fail, triage and urgent flags continue.
 
 ### 4.5 Personal data and access boundaries
 
-- No real data runs through the model or any external service until legal and security have reviewed it.
-- AI is read-only. `get_order` returns only the sender's own orders (by the order number in the email or orders under the sender's account).
-- AI requests lookup tools based on the ticket; code approves them against the ceiling for the handling path. Requests above the ceiling are blocked and logged.
-- For write actions such as modifying or cancelling orders, AI can only suggest; agents execute.
-- Full content (original tickets, order data, drafts) stays in internal systems. External monitoring receives only content-free data such as token usage, latency, and error codes. Access rights and retention for internal logs are decided by security and the support lead.
+- The model and external services must pass the required review; unreviewed, uncontracted external services receive no ticket data.
+- Use the company's existing, verified mapping of member identity. Code confirms order access before `get_order` can read the customer's own orders; an order number in the email does not grant access.
+- AI proposes tools and code approves them within the path's ceiling; requests outside it are blocked and logged. Gap-filling lookups for insufficient-info tickets follow the same limits.
+- AI can only read and suggest; business writes such as modifying or cancelling orders and submitting refunds are done by agents in the order system.
+- Full tickets, order data, and drafts stay in internal systems; external monitoring receives only content-free data such as token usage, latency, and error codes. Access rights and retention for internal records are decided by security and the support lead.
 
 ### 4.6 Logging and trace points
 
@@ -272,63 +277,78 @@ A ticket enters through the ticketing-system webhook, passes rule checks, and is
 |---|---|
 | Intake | Original ticket |
 | Rule checks | Rules matched, flags escalated |
-| AI triage | Labels on all three dimensions; tools requested and approved (including blocked requests); model and prompt version |
-| Lookups | API called, query parameters, data returned |
+| AI triage and authorization | Labels on all three dimensions, identity and order-access check results, tools requested / approved / blocked, model and prompt version |
+| Lookups | API, query parameters, data returned, knowledge sources |
 | Drafting | Draft and cited sources |
-| Agent review | Thumbs up/down, corrected triage, thumbs-down reports, content actually sent |
+| Agent review | Triage corrections, feedback type, failing step and cause, manual correction and handling, content actually sent |
+| Service and degradation | Failures and retry results, degraded step and reason, automatic hand-offs to humans |
 | Supervisor approval | Approver and decision |
 
 ## 5. Metrics and Launch Gates
 
-### 5.1 Monitoring metrics
+### 5.1 Pilot monitoring metrics
 
-Tracked continuously during the pilot; targets carry over from the acceptance criteria.
+| Metric | Definition | Data source |
+|---|---|---|
+| **Task success rate** | Audited tickets whose first reply was correct, useful, and on time ÷ audited tickets | Supervisor or senior-agent audits, lookup sources, ticket timestamps |
+| **Human takeover rate** | Tickets needing human intervention because of a system failure, degradation, or an explicit error ÷ tickets entering paths where AI lookups or drafting are open | System failure and degradation logs, agent error reports, audit records |
+| **Triage error rate** | Tickets found with a wrong handling path ÷ tickets that received a handling-path result, including those later handled by people, forwarded, or archived | Agent triage corrections and error reports, audit records |
+| **Lookup / citation error rate** | Tickets found with wrong looked-up data or citations ÷ tickets that received lookup or citation results | Agent error reports, audit records |
+| **Draft error rate** | Tickets whose AI draft had an explicit error ÷ tickets that received an AI draft | Agent error reports, audit records |
+| **Average handling time** | Total time from an agent opening a draftable ticket to sending the reply ÷ completed tickets of that type; large refunds needing approval tracked separately | Ticketing-system timestamps |
 
-| Metric | Numerator ÷ denominator | Data source | Target |
-|---|---|---|---|
-| **Task success rate** | Tickets with a first response within the target time ÷ tickets entering the support flow | Ticket timestamps | Urgent: within 1 working hour (normal) or 2 (peak); regular: within 4 working hours of shift start (normal) |
-| **Human takeover rate** | Tickets on AI-assisted paths that ended up handled by a person ÷ tickets routed to AI-assisted paths. Reported by reason: lookup failure, degradation, no policy basis (no draft produced), agent thumbs-down, or more than half the draft's characters rewritten | System logs, thumbs-down records, draft vs. sent comparison | No target; watch the trend per reason. The rewrite threshold is calibrated during the pilot |
-| **Error rate** | Handling-path error rate: tickets whose handling path agents corrected ÷ tickets that went through handling-path triage (including urgent; excluding high-risk, other-department, spam, non-Chinese, which are tracked by the guardrail metrics below). Also reported per path<br>Lookups and citations: tickets where agents reported a data or citation error ÷ tickets with AI lookups | Agent corrections and reports | Handling path ≤ 10%; lookups and citations ≤ 5% |
-| **Handling time** | From an agent opening an AI-assisted ticket to sending the reply; large refunds needing approval tracked separately | Ticket timestamps | About +30% tickets per agent per hour |
+**A task counts as successful only if it is all of:**
+
+- **Correct:** order data and internal knowledge match their sources, with no unsupported statements or commitments.
+- **Useful:** answers the main request, or clearly asks for the information needed and the next step; a bare "received" does not count.
+- **On time:** urgent tickets get a first reply within 1 working hour (normal) or 2 (peak); regular tickets within 4 working hours (normal). The clock starts at receipt and pauses outside working hours; time lost when an urgent ticket was initially missed still counts.
+
+**Counting rules:** an explicit error that needs a manual fix counts as a takeover; routine review and pure polishing do not, and a ticket counts at most once. Errors combine agent reports and audit results, deduplicated per ticket and step, and the original error stays recorded after a manual fix.
+
+> **Open question:** peak-season regular tickets have no response-time target yet; how they count toward task success is still to be decided.
 
 ### 5.2 Guardrail metrics
 
-| Metric | Target | What it protects against | Data source |
-|---|---|---|---|
-| Missed urgent tickets | 0 | Urgent tickets queued as regular, e.g. nobody handles a customer departing tomorrow | Agent reports while handling regular tickets; supervisor spot checks of the non-urgent queue |
-| Incorrect content sent | 0 | AI gets an amount or policy wrong and the agent does not catch it | Supervisor spot checks; customer replies |
-| Personal-data incidents | 0 | Customer data sent to an unreviewed external service or included in a reply to another customer | Security audit |
-| Support tickets misclassified as spam or forwarded to the wrong department | 0 | A ticket that needs a reply is archived or handed to another team and the customer never hears back | Every archived or forwarded ticket confirmed by a person |
+| Metric | What it protects against | Data source |
+|---|---|---|
+| **Missed urgent tickets** | A truly urgent ticket is not flagged and gets delayed | Agent reports, supervisor audits |
+| **Incorrect content sent** | An AI error is not caught and reaches the customer as wrong information or a wrong commitment | Supervisor audits, agent reports, customer replies |
+| **Personal-data incidents** | Data reaches an unapproved service, or another person's information is disclosed to a customer | System access logs, security audits and incident reports |
+| **Wrongly archived or forwarded tickets** | A ticket that support should handle is archived or sent to another department, so the request is lost or delayed | Agent confirmation and audits, reports from receiving departments |
 
-A target of 0 is a gate over an observation window, not a guarantee of zero risk, so each result is reported with the number of tickets observed. By the rule of three, zero incidents in *n* tickets supports a rate below about 3/*n* at 95% confidence: 0 in 300 tickets means below about 1%.
+A target of 0 is a gate over an observation window, not a guarantee of zero risk, so each result is reported with the number of tickets observed. By the rule of three, zero incidents in *n* tickets supports a rate below about 3/*n* at 95% confidence.
 
-### 5.3 Promotion and rollback criteria
+### 5.3 Promotion criteria
 
-Rollback means turning off the failing feature and handing it back to humans.
+"Production" means widening use of what has been validated; agents still confirm and send every reply. The PoC uses Wizard of Oz to measure handling time and test the time-saving assumption; the 30% reduction is not a gate for entering the pilot.
 
-| Stage | What runs | Promote when | Roll back when |
-|---|---|---|---|
-| **PoC** | The model and deployment planned for production, tested offline on historical tickets labeled during discovery (hundreds, covering normal and peak season with enough urgent tickets) | Handling-path error ≤ 10%; zero missed urgent tickets, zero spam misclassifications, zero wrong-department forwards; Wizard of Oz shows about 30% handling-time savings | Still below target after tuning → narrow the scope, e.g. ship triage only |
-| **Pilot** | Real tickets and agents, opened in the rollout order: triage → lookups (after order-API approval) → drafting. Each step must meet its error target for 2 consecutive weeks before the next opens | After everything is open, 2 consecutive weeks on target for task success, handling time, and error rate, with every guardrail at 0 | See below |
-| **Production** | All tickets | — | Same as pilot |
+| Stage | How it runs and what it must meet |
+|---|---|
+| **PoC → pilot** | Use the model and deployment planned for production, tested on historical tickets labeled in discovery. Triage error ≤ 10%; zero missed urgent tickets, wrong archives, and wrong forwards. |
+| **Opening pilot stages** | Open triage, read-only lookups, and drafting in order. Lookups widen only after triage error stays ≤ 10% for two consecutive weeks; drafting opens only after lookup/citation error stays ≤ 5% for two consecutive weeks. Every guardrail must be 0 at each stage. |
+| **Pilot → production** | With the planned features open, two consecutive weeks of task success ≥ 95%, average handling time on draftable tickets about 30% below baseline, triage error ≤ 10%, lookup/citation error ≤ 5%, and every guardrail at 0. |
 
-**Rollback during pilot and production**, by where the problem occurs:
+### 5.4 Pause and rollback
 
-- **Missed urgent ticket, spam misclassification, or wrong-department forward:** that triage category goes back to advisory-only, agents check every ticket as before, and it reopens after the fix.
-- **Incorrect content sent**, handled by severity:
-  - **Severe** (a wrong amount, a refund or compensation commitment, or policy or legal terms that bind the company): stop drafting on that path immediately.
-  - **Other errors:** after 1 incident, find the root cause, raise spot-check rates for that path, and highlight error-prone fields in drafts (amounts, dates, policy clauses). If incidents involve **two different agents within 2 weeks**, stop drafting on that path: errors getting past more than one reviewer point to the system or the review design rather than one person's lapse. Repeated incidents from the same agent are investigated the same way, since they can also come from the interface or the review design.
-- **Personal-data incident:** the only case that pauses everything; all work goes back to humans.
-- **Human takeover rate rising for 2 consecutive weeks:** step back one stage and investigate.
+Rollback is scoped to the failing feature or handling path: the pilot can fall back to the PoC, and production can fall back to the pilot.
+
+| Trigger | Immediate action | Fallback and recovery |
+|---|---|---|
+| **1 missed urgent ticket, wrong archive, or wrong forward** | That triage category goes back to advisory-only, with human confirmation restored. | Back to the PoC for fixes and offline retesting; after triage error ≤ 10% and zero misses, wrong archives, and wrong forwards, restart a small pilot. |
+| **1 incorrect reply sent** | Trace the cause and raise audits on that path. Pause drafting on the path after a single severe incident, or when the same cause produces another incorrect reply. | A paused path goes back to the PoC for fixes and retesting, then is revalidated in a small pilot; a production path cannot go straight back to full use. |
+| **1 personal-data incident** | Stop AI processing of real tickets entirely; humans handle everything. | Back to the PoC; re-enter the pilot only after the security investigation, fixes, and validation are complete. |
+| **Human takeover rate rising for two consecutive weeks, confirmed as a quality or reliability decline** | Narrow or pause the affected feature. | Production falls back to a small pilot; the pilot falls back to the last validated stage, or to the PoC if needed. |
+
+Resuming use requires passing the corresponding promotion criteria again; unaffected features keep running.
 
 ## 6. PoC: Ticket Triage
 
-The PoC covers triage because it is the first rollout stage and the only one that does not depend on order-API access or curated policy knowledge. It implements the triage half of the workflow on the 48 sample tickets, using a local `qwen3:8b` model via Ollama plus deterministic rules. Run instructions, data issues, design trade-offs, and the top three steps toward production are in [`poc/README.md`](../poc/README.md); results for all 48 tickets are in [`poc/output/triage_result.csv`](../poc/output/triage_result.csv).
+The PoC covers triage because it is the first rollout stage and the only one that does not depend on order-API access or curated knowledge. It implements the triage half of the workflow on the 48 sample tickets, using a local `qwen3:8b` model via Ollama plus deterministic rules. Run instructions, data issues, design trade-offs, and the top three steps toward production are in [`poc/README.md`](../poc/README.md); results for all 48 tickets are in [`poc/output/triage_result.csv`](../poc/output/triage_result.csv).
 
 ### 6.1 Scope
 
 - **Does:** classify the handling path, flag urgency, high risk, and personal data, extract departure date and claimed amount, merge model and rule results, and decide route, allowed tools, and next step for each ticket.
-- **Does not:** call the order API or policy retrieval (tools are stubs), generate drafts, integrate with a ticketing system, or send anything.
+- **Does not:** check identity or order ownership, call the order API or knowledge retrieval (tools are stubs), link open tickets, generate drafts, integrate with a ticketing system, or send anything.
 
 ### 6.2 Results
 
@@ -341,7 +361,7 @@ The PoC covers triage because it is the first rollout stage and the only one tha
 | Human-only: forward to another department | 8 |
 | High risk: senior agent or supervisor handles | 3 |
 
-Half of the 46 support tickets landed on human-only paths, far more than the 17% assumed in the optimistic planning case; the [capacity table](#appendix-how-the-targets-were-derived) shows what that does to the estimate. The model requested 11 tools on 8 tickets that the per-path ceiling filtered out, all on human-only paths.
+Half of the 46 support tickets landed on human-only paths; this case mix feeds the [capacity estimate](#a2-case-mix-and-capacity). The model requested 11 tools on 8 tickets that the per-path ceiling filtered out, all on human-only paths. This shows the filter is applied; it does not test real API authorization, identity checks, or resistance to prompt injection.
 
 There is no accuracy figure: there is no labeled evaluation set yet, and the category definitions were written after reading these 48 tickets, so results are optimistic. Even 48 correct out of 48 would only support an error rate below about 6% by the rule of three.
 
@@ -363,44 +383,70 @@ There is no accuracy figure: there is no labeled evaluation set yet, and the cat
 
 **Three immediate actions:**
 
-1. **Contain.** Apply the rollback criteria in §5.3: a severe error stops drafting on that path at once; otherwise check the two-agent rule, and either stop drafting on the path or raise its spot-check rate. Other paths keep running. Tell agents which path is back to manual and that they will not see suggestions there until it is fixed and relaunched.
-2. **Trace each incident end to end.** For each of the three, check the source data, the lookup, the generated draft, how the draft was presented, and the review step, then fix what the trace shows. The path's error rate against its target decides whether the path stays open, not where the fault lies: an on-target aggregate can still hide a concentrated failure on one path, amount range, or policy, and an interface can make errors hard to spot.
+1. **Contain.** Apply the rollback rules in §5.4: each incorrect reply triggers a cause trace and higher audits on its path, and drafting pauses on any path with a severe incident or a repeated cause. Paused paths go back to the PoC and must re-earn their gates through a small pilot; other paths keep running. Tell agents which paths are back to manual and why.
+2. **Trace each incident end to end.** For each of the three, check the source data, the lookup, the generated draft, how the draft was presented, and the review step, then fix what the trace shows. The path's error rate against its gate decides whether the path stays open, not where the fault lies: an on-target aggregate can still hide a concentrated failure on one path, amount range, or policy, and an interface can make errors hard to spot.
 3. **Rebuild trust with agents.** Share what the trace found and what changed. Where review was part of the cause, train agents on historical tickets that mix correct and incorrect drafts. On relaunch, mark the steps and fields that failed before so agents know where to look closely.
 
 ## Appendix: How the targets were derived
 
-**Handling-time estimate**
+### A1. Handling-time estimate
 
-- The closest studies of asynchronous text replies are healthcare systems using AI to draft replies to patient messages for human review: Stanford found no significant change in handling time ([Garcia et al., 2024](https://pmc.ncbi.nlm.nih.gov/articles/PMC10955355/)); UC San Diego found reading time increased by about 22% ([Tai-Seale et al., 2024](https://pmc.ncbi.nlm.nih.gov/articles/PMC11019394/)); NYU observed about −7% turnaround on replies that used a draft ([Mandal et al., 2025](https://pmc.ncbi.nlm.nih.gov/articles/PMC12491571/), observational).
-- Live-chat support: +14% resolutions per hour ([Brynjolfsson et al., NBER](https://www.nber.org/papers/w31161), 5,179 agents) and −8.5% average handling time ([arXiv version](https://arxiv.org/abs/2304.11771)). LinkedIn's support team reported −28.6% median resolution time after adding knowledge-graph RAG ([Xu et al., SIGIR 2024](https://arxiv.org/abs/2404.17723)); this measures wall-clock resolution, not handling time.
-- Savings are limited because reading and judgment remain human, checking AI output adds reading time, and actual usage is only about 20–40% (draft usage of about 20% at Stanford and NYU; 38% adherence in Brynjolfsson et al.). Across these studies, typical savings are about 5–15% and best-case about 15–30%. None of them is a travel or email-ticket setting, so the range is a planning input to be replaced by the Wizard of Oz measurement.
+**30% is an optimistic planning assumption for this scenario, not a general industry result or a measurement here.** It draws mainly on a travel company's AI-assisted email case, with other studies used to check its limits.
 
-**Capacity across assumptions**
-
-Eight agents × 6 hours = 2,880 working minutes a day, or about 360 tickets at today's 8 minutes. Capacity with AI assistance depends on the share of tickets that get it and on how much time it saves on them:
-
-| Share of tickets AI-assisted | 15% faster | 30% faster |
+| Source | Reported result and relevance | Limitation |
 |---|---|---|
-| 50% (close to the PoC's routing) | About 390/day | About 425/day |
-| 83% (optimistic planning case) | About 410/day | About 480/day |
+| [Gant Travel, 2025](https://www.newswire.com/news/gants-ai-powered-email-buddy-drives-happiness-22610600) | AI-suggested replies with agents in control; two months after launch, email handle time fell 15% and average response time 17% against a 36-month historical average | Company-reported historical comparison, not a controlled study isolating the AI effect |
+| [Gant Travel, 2026](https://www.accessnewswire.com/newsroom/en/travel/gant-travels-%22email-buddy%22-ai-innovation-reduces-email-handle-times-as-customers-and-agents-1137879) | Average email handle time in January 2026 was more than 30% below the prior January, supporting about 30% as an optimistic reference | A follow-up from the same company, not an independent case; other organizational changes happened in the same period |
+| [Forrester / Zendesk TEI](https://tei.forrester.com/go/zendesk/service/) | A unified workspace, central knowledge base, and copilot are estimated to save 2–3 of 10 minutes per ticket, i.e. 20–30% | Commissioned by Zendesk; a composite organization built from interviews, not a single measured company |
+| [Brynjolfsson et al.](https://arxiv.org/abs/2304.11771) | Average handling time fell about 8.5%, showing overall savings can be well below the optimistic case | Live-chat support, a different flow from asynchronous travel email |
+| [LinkedIn KG-RAG](https://arxiv.org/abs/2404.17723) | Median per-issue resolution time fell 28.6%, suggesting retrieval assistance can speed up service | Measures resolution time including waits and back-and-forth, not agent handling time |
 
-Every combination stays far below the roughly 700 tickets a day of peak season. The first-response estimates below use the optimistic case (about 6 minutes per ticket, 480 a day), so they are a best case.
+Studies of asynchronous, human-reviewed drafting also show small or insignificant time savings: [Stanford](https://pmc.ncbi.nlm.nih.gov/articles/PMC10955355/) found no significant change; [UC San Diego](https://pmc.ncbi.nlm.nih.gov/articles/PMC11019394/) found reading time rose about 22%; [NYU](https://pmc.ncbi.nlm.nih.gov/articles/PMC12491571/) observed about 7% less time on replies that used a draft, in an observational comparison. These are healthcare messaging cases and do not transfer directly to travel support, but they show that faster writing does not mean proportionally less total time.
 
-**First response**
+This scenario combines advance lookups, knowledge retrieval, and drafting, so 30% is used as the optimistic assumption for draftable tickets only; other tickets are counted separately. The 8-minute baseline is this scenario's assumption to be measured, not a figure from the studies above.
 
-How long it takes after the shift starts to clear the overnight backlog. Urgent tickets go first, but they are part of the backlog, so reordering does not change the total time to clear it:
+### A2. Case mix and capacity
 
-| | Normal (350/day) | Peak (700/day) |
-|---|---|---|
-| Overnight backlog | About 233 | About 467 |
-| Time to clear the backlog | About 3.9 working hours | About 7.8 working hours |
-| Of which urgent | About 39, about 36 minutes | About 78, about 1.2 hours |
-| Daily capacity vs. intake | About 130 spare | About 220 short |
+The 48 samples and the PoC's routing give a rough four-group case mix. It is a working assumption for sizing, not a fixed long-term ratio, and does not require every classification to be final.
 
-The urgent targets (1 hour normal, 2 hours peak) and the 4-hour regular target leave buffer above these estimates. At a shortfall of about 220 tickets a day, a peak lasting 1 week, 2 weeks, or 1 month (working days) means the last tickets wait about 2.3, 4.6, or 10 extra working days.
+| Case group | Approx. count | Minutes per ticket, before | Minutes per ticket, after |
+|---|---:|---:|---:|
+| Draftable, agent reviews before sending | 23 | 8 | 5.6 |
+| Not drafted, handled fully by an agent | 15 | 8 | 8 |
+| Forwarded to another department | 8 | 3 | 3 |
+| Spam / test data | 2 | not counted | not counted |
 
-**Quality thresholds** (based on public studies, not measured in this scenario)
+High-risk tickets that are also complaints are counted once. Forwarding time covers the hand-off and the later reply, not the wait for the other department. Archiving assumes automatic handling with occasional spot checks once stable; the initial one-by-one checks are not in this model.
 
-- **Handling-path accuracy ≥ 90%:** intent classification over 289 classes for Chinese e-commerce after-sales support reached 93% ([JDDC, LREC 2020](https://arxiv.org/abs/1911.09969), non-LLM). Anthropic's [ticket-routing guide](https://platform.claude.com/docs/en/about-claude/use-case-guides/ticket-routing) targets 90–95% (vendor documentation without a cited measurement). This scenario has far fewer categories, but results on real tickets are much lower without task-specific data: 0.34–0.57 for zero-shot GPT-4 on Italian IT tickets ([Arici et al., 2023](https://ceur-ws.org/Vol-3551/paper4.pdf)) and 60–76% for a multilingual classifier on Zendesk tickets ([arXiv 2309.08647](https://arxiv.org/abs/2309.08647)). Labeled examples from discovery are therefore needed as few-shot examples or training data, validated on this scenario's own labeled set.
-- **Lookup and citation accuracy ≥ 95%:** grounded answer generation in LinkedIn's support system shows about a 5% hallucination rate ([arXiv 2608.10224](https://arxiv.org/abs/2608.10224), LLM-graded); this design also refuses to draft without a policy basis. Commercial legal RAG tools hallucinated in 17–33% of queries ([Magesh et al.](https://arxiv.org/abs/2405.20362)), so the risk should not be underestimated.
-- The Wizard of Oz test mixes in errors at these rates (about 10% misrouted, 5% wrong citations) to verify agents can still finish within the target handling time.
+- Draftable tickets: 8 × (1 − 30%) = 5.6 minutes.
+- Average agent time per incoming ticket after rollout: (23 × 5.6 + 15 × 8 + 8 × 3) ÷ 48 ≈ 5.7 minutes.
+- Working time per day: 8 agents × 6 hours × 60 = 2,880 minutes.
+- Tickets absorbed per day: 2,880 ÷ 5.7 ≈ 500.
+- Normal season (about 350 a day) is covered; peak season (about 700 a day) is about 200 short per day.
+
+Forwarded and archived tickets keep the same time before and after, so tickets that were already fast are not counted as AI savings. For the same case mix, 48 tickets take about 328 minutes before and about 273 after, an overall reduction of about 17%, while draftable tickets themselves drop 30%. If draftable tickets save only 15%, capacity falls to about 460 tickets a day.
+
+In round numbers, a peak lasting 5, 10, or 22 working days accumulates about 1,000, 2,000, or 4,400 tickets, equal to about 2, 4, or 9 days of current capacity. This is a backlog conversion, not each customer's actual wait, which also depends on later intake and prioritization.
+
+### A3. First-response estimate
+
+Using the assumptions that about two thirds of tickets arrive outside working hours and about one in six is urgent, this estimates how long the backlog at the start of a shift takes to clear. It is a simplified batch estimate, not a full queueing simulation.
+
+| | Normal (about 350/day) | Peak (about 700/day) |
+|---|---:|---:|
+| Accumulated outside working hours | About 230 | About 470 |
+| Of which urgent | About 40 | About 80 |
+| Time for 8 agents working in parallel to clear the batch | About 2.8 hours | About 5.5 hours |
+| Of which urgent, handled first | About 0.5 hours | About 0.9 hours |
+
+The table uses the 5.7-minute weighted average and does not model the urgent tickets' own case mix; "effective handling time" also differs from elapsed working hours. Spreading 6 effective hours over an 8-hour shift as an example, the backlog takes about 3.7 (normal) or 7.4 (peak) working hours, of which urgent tickets take about 0.6 or 1.2. The 8-hour shift is an assumption to confirm in discovery.
+
+The targets therefore stay at 1 working hour (normal) and 2 (peak) for urgent tickets, and 4 working hours (normal) for regular tickets. New urgent tickets during the day, complex cases, supervisor approvals, and cross-department waits can all affect the result; cross-department waits in particular take no agent time but still lengthen response time, and must be checked against historical data and the pilot. Once peak season carries a backlog across days, waits for regular tickets cannot be estimated from the previous night's intake alone.
+
+### A4. Quality targets and Wizard of Oz
+
+**Handling-path triage accuracy ≥ 90%.** [JDDC](https://arxiv.org/html/1911.09969v4)'s Chinese e-commerce after-sales classifier covers 289 intents, was trained on data labeled by professional agents, and reports 93% accuracy, but it is not an LLM. [Anthropic's ticket-routing guide](https://platform.claude.com/docs/en/about-claude/use-case-guides/ticket-routing) suggests 90–95% as a target without a cited measurement. Both set an initial target only and cannot guarantee it here; it must be validated on categories defined in discovery and this scenario's own labeled set.
+
+**Lookup and internal-knowledge citation accuracy ≥ 95%.** A [LinkedIn support study](https://arxiv.org/html/2608.10224v1) ran repeated simulations on 100 human-verified historical interactions and found hallucination rates of about 4.8–6.2% for general RAG setups, graded by an LLM. This is only a reference for a citation-quality bar; it is not the same as order-API lookup accuracy or the rate of incorrect replies sent. This design also refuses to draft without a relevant knowledge basis. [Legal RAG tools](https://arxiv.org/abs/2405.20362) showed error rates of 17–33%, a reminder that retrieved sources do not make an answer reliable.
+
+**Wizard of Oz:** people prepare the triage, lookup results, sources, and drafts the system would provide, mixing in about 10% misrouted and 5% wrong-lookup or wrong-citation cases, and agents check, correct, and are timed. These are simulated rates set from the targets, not this scenario's actual error rates; they test whether the time-saving assumption holds when outputs contain errors.

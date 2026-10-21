@@ -1,49 +1,45 @@
-%%{init: {"flowchart": {"wrappingWidth": 300}}}%%
 flowchart TD
-  A["New ticket arrives<br/>(ticketing-system webhook)"] --> R["Rule checks (code)<br/>link open tickets · urgent and high-risk keywords · refund > NT$30,000"]
-  R --> H{"Model service<br/>healthy?"}
-  H -- No --> M0["Degraded mode:<br/>keep urgent and high-risk flags set by rules<br/>all tickets handled by agents (urgent first)"]
-  H -- Yes --> C["AI triage: handling path · priority · risk flags<br/>can escalate but never clear rule flags<br/>requests lookup tools; code approves within the path's ceiling"]
-
-  C --> HR["High risk (compensation, PR, legal)<br/>no AI handling or drafting<br/>senior agent or supervisor handles end to end"]
-  C --> SP["Spam<br/>moved to spam folder, no reply, spot-checked"]
-  C --> NM["Product · external info · other department<br/>no AI draft, handled by agents<br/>(forwarded tickets: agent replies after the other team responds)"]
-  C --> CP["Complaints and compensation<br/>no AI draft, handled by agents"]
-  C --> INS["Insufficient info<br/>first fill gaps from linked open tickets and get_order<br/>(orders under the sender's account)"]
-  INS --> INSQ{"Gaps filled?"}
-  INSQ -- Yes, re-triage handling path --> C
-  INSQ -- No --> INSD["AI drafts a request for missing details"]
-  C --> NC["Non-Chinese<br/>no AI draft, handled by agents"]
-
-  subgraph Q["Lookups (one or both, by intent)"]
-    QO["get_order<br/>read-only order API, sender's own orders only"]
-    QK["search_policy<br/>policy-knowledge RAG with sources"]
+  subgraph LEGEND["Legend"]
+    direction LR
+    LS["Grey: system event / state"]
+    LR["Orange: code"]
+    LA["Purple: AI"]
+    LH["Blue: human"]
+    LS ~~~ LR ~~~ LA ~~~ LH
   end
-  C --> Q
-  Q -. Order not found or no policy basis .-> M1["No AI draft, handled by agents"]
-  Q --> D["AI summarizes findings, suggests actions, drafts reply<br/>urgent tickets at the front of the queue"]
-
-  M0 --> J
+  LEGEND ~~~ A
+  A["System: new ticket received"] --> R["Code: rule checks<br/>non-Chinese, PII, urgency and risk<br/>link open tickets"]
+  R --> M{"Code: model service healthy?"}
+  M -- "Still failing after retry" --> F["Agent: manual handling<br/>rule flags kept, urgent first"]
+  M -- "Healthy" --> T["AI: triage<br/>handling path, priority, risk<br/>cannot clear rule flags"]
+  T -- "Spam / test data" --> SP["Code: archive, no reply"]
+  T -- "High risk" --> HR["Senior agent / supervisor:<br/>handles end to end"]
+  T -- "No draft / unclassifiable" --> F
+  T -- "Draftable / needs details" --> G["Code: approve tools and data access<br/>verify member identity and order ownership"]
+  G -- "Not verified" --> V["Agent: verify via existing process<br/>no order data until verified"]
+  V --> F
+  G -- "Approved" --> Q["AI: read-only lookups, compile data<br/>order system, internal knowledge<br/>open tickets when needed"]
+  Q -- "Lookup failed / no basis" --> F
+  Q -- "Details filled, re-triage" --> T
+  Q -- "Still missing details" --> ASK["AI: draft request for details"]
+  Q -- "Data complete" --> D["AI: summarize, suggest actions<br/>draft reply"]
+  D --> C["Agent: review<br/>category, data, draft"]
+  ASK --> C
+  F --> J{"Code: refund > NT$30,000?"}
+  C --> J
+  J -- "Yes" --> S["Supervisor: approval"]
+  J -- "No" --> O["Agent: perform required actions<br/>in the order system"]
+  S --> O
+  O --> SEND["Agent: send reply"]
   HR --> SEND
-  NM --> SEND
-  NC --> J
-  CP --> J
-  INSD --> K
-  M1 --> J
-  D --> K["Agent review: category, data, draft"]
-  K --> J{"Refund<br/>> NT$30,000?"}
-  J -- Yes --> S["Supervisor approval"]
-  J -- No --> OP{"Action<br/>needed?"}
-  S --> OP
-  OP -- Yes --> X["Agent performs the action in the order system<br/>(e.g. modify or cancel order, submit refund)"] --> SEND["Send reply, close ticket"]
-  OP -- No --> SEND
+  SEND --> DONE["System: ticket closed"]
 
+  classDef sys fill:#f2f2f2,stroke:#999,color:#222;
   classDef rule fill:#fff4e5,stroke:#e8a33d,color:#5a3b00;
-  classDef human fill:#eef6ff,stroke:#5b8def,color:#123;
   classDef ai fill:#f0ecff,stroke:#8b6fd6,color:#222;
-  classDef sys fill:#f2f2f2,stroke:#999,color:#333;
-  class R,H,J,SP rule;
-  class M0,HR,NM,NC,CP,M1,K,S,X,OP human;
-  class C,QO,QK,D,INS,INSQ,INSD ai;
-  class A,SEND sys;
-  style Q fill:#ffffff,stroke:#8b6fd6,stroke-dasharray: 4 3,color:#222
+  classDef human fill:#eef6ff,stroke:#5b8def,color:#123;
+  class A,DONE,LS sys;
+  class R,M,G,J,SP,LR rule;
+  class T,Q,ASK,D,LA ai;
+  class F,HR,V,C,S,O,SEND,LH human;
+  style LEGEND fill:#ffffff,stroke:#b7b7b7,color:#222
